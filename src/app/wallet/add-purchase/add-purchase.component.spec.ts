@@ -21,6 +21,10 @@ describe('AddPurchaseComponent | форма добавления покупки'
       return this.getByAutomationId('price-error');
     }
 
+    get dateError(): DebugElement {
+      return this.getByAutomationId('date-error');
+    }
+
     get priceControl(): DebugElement {
       return this.getByAutomationId('price-control');
     }
@@ -48,8 +52,7 @@ describe('AddPurchaseComponent | форма добавления покупки'
 
   beforeEach(async(() => {
     TestBed.configureTestingModule({
-      imports: [AddPurchaseModule],
-      declarations: [AddPurchaseComponent]
+      imports: [AddPurchaseModule]
     })
       .compileComponents();
   }));
@@ -91,11 +94,11 @@ describe('AddPurchaseComponent | форма добавления покупки'
       });
 
       it('date пусто', () => {
-        expect(page.inputText(page.titleControl)).toBe('');
+        expect(page.inputText(page.dateControl)).toBe('');
       });
 
       it('comment пусто', () => {
-        expect(page.inputText(page.titleControl)).toBe('');
+        expect(page.inputText(page.commentControl)).toBe('');
       });
     });
 
@@ -287,6 +290,48 @@ describe('AddPurchaseComponent | форма добавления покупки'
       });
     });
 
+    describe('поле date', () => {
+      let field: AbstractControl;
+
+      beforeEach(() => {
+        field = component.form.get('date');
+      });
+
+      describe('пустое поле', () => {
+        beforeEach(() => {
+          field.setValue('');
+        });
+
+        it('валидно', () => {
+          expect(field.valid).toBe(true);
+        });
+      });
+
+      describe('поле «2017.12.22»', () => {
+        beforeEach(() => {
+          field.setValue('2017.12.22');
+        });
+
+        it('невалидно', () => {
+          expect(field.valid).toBe(false);
+        });
+
+        it('содержит ошибку pattern', () => {
+          expect(field.errors['pattern']).toBeTruthy();
+        });
+
+        it('в тексте ошибки выводится "неверный формат даты"', () => {
+          fixture.detectChanges();
+          expect(page.text(page.dateError)).toBe('неверный формат даты');
+        });
+      });
+
+      it('поле «11.12.2017» валидно', () => {
+        field.setValue('11.12.2017');
+        expect(field.valid).toBe(true);
+      });
+    });
+
     describe('кнопка отправки', () => {
       beforeEach(() => {
         component.form.patchValue({
@@ -414,6 +459,22 @@ describe('AddPurchaseComponent | форма добавления покупки'
             component.onSubmit();
 
             expect(result.date.valueOf()).toBe(new Date().valueOf());
+          });
+        });
+
+        describe('коммент', () => {
+          it('передается "понравилось"', () => {
+            component.form.patchValue({comment: 'понравилось'});
+            component.onSubmit();
+
+            expect(result.comment.valueOf()).toBe('понравилось');
+          });
+
+          it('если не задана, ничего не передается', () => {
+            component.form.patchValue({comment: ''});
+            component.onSubmit();
+
+            expect(result.comment).not.toContain(result.comment, 'comment');
           });
         });
       });

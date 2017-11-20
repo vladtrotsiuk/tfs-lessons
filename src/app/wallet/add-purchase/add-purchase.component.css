@@ -2,4 +2,8 @@
   border-color: #dc3545;
 }
 
+.invalid-feedback {
+  display: block;
+}
+
 /* http://getbootstrap.com/docs/4.0/components/forms/#server-side подскажет, что делать*/

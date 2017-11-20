@@ -59,8 +59,7 @@ describe('WalletComponent | компонент кошелька', () => {
 
   beforeEach(async(() => {
     TestBed.configureTestingModule({
-      imports: [WalletModule],
-      declarations: [WalletComponent]
+      imports: [WalletModule]
     })
       .compileComponents();
   }));
