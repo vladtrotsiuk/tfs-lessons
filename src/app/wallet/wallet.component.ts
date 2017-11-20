@@ -10,16 +10,22 @@ export class WalletComponent implements OnInit {
   purchases: Purchase[] = [];
   total = 0;
   isAddPurchaseOpen = false;
+  btn;
+  btnState = {
+    ADD: 'Добавить',
+    CANCEL: 'Отменить'
+  };
 
   private currentOpen: number;
 
   constructor() {
-    this.toggleAdd();
+    // this.toggleAdd();
   }
 
   ngOnInit() {
     // this.purchases = this.getData();
     // this.total = this.getTotal();
+    this.btn = this.btnState.ADD;
     this.addPurchases(this.getData());
   }
 
@@ -32,6 +38,7 @@ export class WalletComponent implements OnInit {
 
   toggleAdd() {
     this.isAddPurchaseOpen = !this.isAddPurchaseOpen;
+    this.btn = this.isAddPurchaseOpen ? this.btnState.CANCEL : this.btnState.ADD;
   }
 
   onPreviewClick(index: number) {
