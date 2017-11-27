@@ -5,22 +5,35 @@ import {WalletModule} from './wallet.module';
 import {PageObject} from '../../utils/pageObject';
 import {DebugElement} from '@angular/core';
 import {Purchase} from '../model/purchase';
+import {WalletHttpService} from './wallet-http.service';
+import createSpyObj = jasmine.createSpyObj;
+import {Observable} from 'rxjs/Observable';
+import {getPurchaseMock} from '../model/purchase.mock';
+
+const walletMock = {
+  id: 'foo',
+  amount: 100000,
+  name: 'Мой первый кошелек'
+};
 
 const purchasesMock: Purchase[] = [
   {
+    id: '1',
     title: 'Проезд на метро',
     price: 1700,
-    date: new Date(2017, 10, 3)
+    date: '2017-10-03'
   },
   {
+    id: '2',
     title: 'IPhone X 256gb',
     price: 91990,
-    date: new Date(2017, 10, 3)
+    date: '2017-10-03'
   },
   {
+    id: '3',
     title: 'Лапша "Доширак"',
     price: 40,
-    date: new Date(2017, 10, 3)
+    date: '2017-10-03'
   }
 ];
 
@@ -56,11 +69,18 @@ describe('WalletComponent | компонент кошелька', () => {
   let component: WalletComponent;
   let fixture: ComponentFixture<WalletComponent>;
   let page: Page;
+  let walletHttpServiceSpy: any;
 
   beforeEach(async(() => {
+    walletHttpServiceSpy = createSpyObj('WalletHttpService', ['getPurchases', 'addPurchase', 'deletePurchase', 'updatePurchase']);
     TestBed.configureTestingModule({
       imports: [WalletModule],
-      declarations: [WalletComponent]
+      providers: [
+        {
+          provide: WalletHttpService,
+          useValue: walletHttpServiceSpy
+        }
+      ]
     })
       .compileComponents();
   }));
@@ -68,7 +88,9 @@ describe('WalletComponent | компонент кошелька', () => {
   beforeEach(() => {
     fixture = TestBed.createComponent(WalletComponent);
     component = fixture.componentInstance;
+    component.wallet = Object.assign({}, walletMock);
     page = new Page(fixture);
+    walletHttpServiceSpy.getPurchases.and.returnValue(Observable.of(purchasesMock));
     fixture.detectChanges();
   });
 
@@ -78,22 +100,22 @@ describe('WalletComponent | компонент кошелька', () => {
 
   describe('при инициализации компонент', () => {
     it('содержит заголовок', () => {
-      expect(page.title).not.toBeNull();
-      expect(page.text(page.title)).toBe('Мой первый кошелек');
+      expect(page.title !== null).toBeTruthy();
+      expect(page.text(page.title)).toBe(walletMock.name);
     });
 
     it('содержит подзаголовок', () => {
-      expect(page.subtitle).not.toBeNull();
+      expect(page.subtitle !== null).toBeTruthy();
       expect(page.text(page.subtitle)).toBe('Ваши расходы за последнюю неделю');
     });
 
     it('содержит кнопку "Добавить"', () => {
-      expect(page.togglePurchaseBtn).not.toBeNull();
+      expect(page.togglePurchaseBtn !== null).toBeTruthy();
       expect(page.text(page.togglePurchaseBtn)).toBe('Добавить');
     });
 
     it('блок добавления покупки скрыт', () => {
-      expect(page.newPurchaseForm).toBeNull();
+      expect(page.newPurchaseForm === null).toBeTruthy();
     });
 
     describe('клик на "Добавить"', () => {
@@ -107,7 +129,7 @@ describe('WalletComponent | компонент кошелька', () => {
       });
 
       it('показывает блок добавления покупки', () => {
-        expect(page.newPurchaseForm).not.toBeNull();
+        expect(page.newPurchaseForm !== null).toBeTruthy();
       });
 
       describe('второй клик на кнопку', () => {
@@ -121,24 +143,41 @@ describe('WalletComponent | компонент кошелька', () => {
         });
 
         it('скрывает блок добавления покупки', () => {
-          expect(page.newPurchaseForm).toBeNull();
+          expect(page.newPurchaseForm === null).toBeTruthy();
         });
       });
     });
 
-    it('сразу же загружает первые три элемента', () => {
-      expect(component.purchases).toEqual(purchasesMock);
+    describe('загружает список покупок', () => {
+      it('вызывает метод сервиса получения покупок', () => {
+        expect(walletHttpServiceSpy.getPurchases).toHaveBeenCalled();
+      });
+
+      it('передает в метод сервиса id кошелька', () => {
+        expect(walletHttpServiceSpy.getPurchases).toHaveBeenCalledWith('foo');
+      });
+
+      it('устанавливает покупки в обратном хронологическом порядке', () => {
+        const reversed = purchasesMock.slice(0).reverse();
+
+        expect(component.purchases).toEqual(reversed);
+      });
+
+      it('высчитывает общую сумму', () => {
+        expect(component.total).toBe(purchasesMockTotal);
+      });
+
+      it('высчитывает баланс', () => {
+        expect(component.balance).toBe(walletMock.amount - purchasesMockTotal);
+      });
     });
 
-    it('сразу же высчитывает общую сумму', () => {
-      expect(component.total).toBe(purchasesMockTotal);
-    });
-
-    it('отображает сумму в поле Итого', () => {
+    it('отображает баланс в поле Баланс', () => {
       component.total = 100;
+      component.wallet.amount = 123;
       fixture.detectChanges();
 
-      expect(page.text(page.total)).toBe(`Итого: ₽100.00`);
+      expect(page.text(page.total)).toBe(`Баланс: ₽23.00`);
     });
   });
 
@@ -147,7 +186,7 @@ describe('WalletComponent | компонент кошелька', () => {
       component.purchases = [];
       fixture.detectChanges();
 
-      expect(page.getPurchasePreview(0)).toBeNull();
+      expect(page.getPurchasePreview(0) === null).toBeTruthy();
     });
 
     it('отрисовывает один элемент', () => {
@@ -170,21 +209,45 @@ describe('WalletComponent | компонент кошелька', () => {
 
   describe('onAddPurchase | добавление элемента', () => {
     beforeEach(() => {
+      walletHttpServiceSpy.addPurchase.and.returnValue(Observable.of('4'));
       page.click(page.togglePurchaseBtn);
       fixture.detectChanges();
       component.onAddPurchase({
+        id: 'должен быть перезаписан',
         title: 'foo',
         price: 100,
-        date: new Date(2017, 10, 3)
+        date: '2017-10-03'
       });
       fixture.detectChanges();
     });
 
-    it('добавляет элемент в начало списка', () => {
-      expect(component.purchases[0]).toEqual({
+    it('вызывает метод добавления', () => {
+      expect(walletHttpServiceSpy.addPurchase).toHaveBeenCalled();
+    });
+
+    it('передает в метод id кошелька', () => {
+      const [id] = walletHttpServiceSpy.addPurchase.calls.mostRecent().args;
+
+      expect(id).toBe(walletMock.id);
+    });
+
+    it('передает в метод покупку', () => {
+      const [, purchase] = walletHttpServiceSpy.addPurchase.calls.mostRecent().args;
+
+      expect(purchase).toEqual({
+        id: 'должен быть перезаписан',
         title: 'foo',
         price: 100,
-        date: new Date(2017, 10, 3)
+        date: '2017-10-03'
+      });
+    });
+
+    it('добавляет элемент в начало списка', () => {
+      expect(component.purchases[0]).toEqual({
+        id: '4',
+        title: 'foo',
+        price: 100,
+        date: '2017-10-03'
       });
     });
 
@@ -193,7 +256,61 @@ describe('WalletComponent | компонент кошелька', () => {
     });
 
     it('скрывает форму добавления', () => {
-      expect(page.newPurchaseForm).toBeNull();
+      expect(page.newPurchaseForm === null).toBeTruthy();
+    });
+  });
+
+  describe('onPreviewDelete', () => {
+    let purchaseMock: Purchase;
+
+    beforeEach(() => {
+      purchaseMock = getPurchaseMock();
+      purchaseMock.id = 'bar';
+      walletHttpServiceSpy.getPurchases.calls.reset();
+      walletHttpServiceSpy.deletePurchase.and.returnValue(Observable.of(null));
+      component.onPreviewDelete(purchaseMock);
+    });
+
+    it('вызывает метод удаления', () => {
+      expect(walletHttpServiceSpy.deletePurchase).toHaveBeenCalled();
+    });
+
+    it('передает в метод удаления id кошелька', () => {
+      const [id] = walletHttpServiceSpy.deletePurchase.calls.mostRecent().args;
+
+      expect(id).toBe(walletMock.id);
+    });
+
+    it('передает в метод удаления id покупки', () => {
+      const [, id] = walletHttpServiceSpy.deletePurchase.calls.mostRecent().args;
+
+      expect(id).toBe('bar');
+    });
+
+    it('вызывает метод загрузки всех покупок', () => {
+      expect(walletHttpServiceSpy.getPurchases).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('onPurchaseEdit', () => {
+    beforeEach(() => {
+      walletHttpServiceSpy.updatePurchase.and.returnValue(Observable.of(null));
+      walletHttpServiceSpy.getPurchases.calls.reset();
+      component.onPurchaseEdit(getPurchaseMock());
+    });
+
+    it('вызывает метод обновления', () => {
+      expect(walletHttpServiceSpy.updatePurchase).toHaveBeenCalled();
+    });
+
+    it('передает в метод обновления покупкy', () => {
+      const [purchase] = walletHttpServiceSpy.updatePurchase.calls.mostRecent().args;
+
+      expect(purchase).toEqual(getPurchaseMock());
+    });
+
+    it('вызывает метод загрузки всех покупок', () => {
+      expect(walletHttpServiceSpy.getPurchases).toHaveBeenCalledTimes(1);
     });
   });
 });
